@@ -115,7 +115,11 @@ def extract_data(plant_list):
             plants[i]['num_suppliers'] = '0'
             plants[i]['supplier_search'] = ''
             plants[i]['rhsplants_url'] = ''
-            plants[i]['rhsplants_price_gbp'] = ''  
+            plants[i]['rhsplants_price_gbp'] = ''
+        try:
+            plants[i]['num_suppliers'] = int(plants[i]['num_suppliers'])
+        except:
+            print('Plant ID: ' + str(plants[i]['rhs_id']) + '. Could not convert number of suppliers from string to integer')
     
     print('Extracted ' + str(i+1) + ' rows of data from query results')
     return plants
@@ -123,9 +127,6 @@ def extract_data(plant_list):
 
 def main():
     
-    #arguments = sys.argv[1:]
-    #short_option = "o:"
-    #long_option = "output="
     
     help_text = "Script to scrape list of plants from RHS Find a plant.  User should supply query string to append to URL after 'https://www.rhs.org.uk/plants/search-results-beta?query=' and also an optional output file."
     parser = argparse.ArgumentParser(description=help_text)
