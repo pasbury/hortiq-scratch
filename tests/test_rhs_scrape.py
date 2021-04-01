@@ -12,7 +12,7 @@ enrichedfile = 'unit_test_out_enriched.txt'
 
 
 # Test find_plants.py
-
+@pytest.mark.order(1)
 def test_find_plants():
 
 
@@ -31,10 +31,8 @@ def test_find_plants():
     
     
 # Test add_plant_details.py
-
+@pytest.mark.order(2)
 def test_add_plant_details():
-
-
 
     if os.path.exists(enrichedfile):
         os.remove(enrichedfile)
@@ -48,4 +46,4 @@ def test_add_plant_details():
         result = json.load(f)
 
     #assert len(result['data']) == 7
-    assert len(result['data'][0]) == 27
+    assert len(result['data'][0]) == 29

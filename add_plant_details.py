@@ -161,6 +161,27 @@ def get_plant_details(soup):
             if re.sub("[^a-zA-Z]+", "", s) == "Alkaline":
                 plantinfo["acidity_alkaline"] = 1
 
+                
+    t = soup.find("table", {"class": "table table--plant-details"})
+    plantinfo["flower_season"] = {}
+    plantinfo["flower_colour"] = ""    
+    if t is not None:
+        try:
+            rows = t.find_all("tr")
+            season = {1:'Spring', 2:'Summer', 3:'Autumn', 4:'Winter'}
+            flower_season = {}
+            for r, row in enumerate(rows):
+                if r > 0: # i.e. not header row
+                    cells = row.find_all("td")
+                    for c, cell in enumerate(cells):
+                        if c == 1: # i.e. column for flower colour
+                            flower_season[season[r]] = cell.get_text().strip()
+            plantinfo["flower_season"] = flower_season
+            plantinfo["flower_colour"] = ', '.join(list(set(flower_season.values()))).lstrip(', ')
+        except:
+            print('Unable to get flower colour info')            
+
+                
     return plantinfo
 
 
