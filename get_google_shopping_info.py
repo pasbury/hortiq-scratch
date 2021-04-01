@@ -42,7 +42,7 @@ def no_punc(s):
 def plant_name_check(plant_name_1, plant_name_2, max_lev_dist=3):
     n1 = no_punc(plant_name_1).lower()
     n2 = no_punc(plant_name_2).lower()
-
+    
     # First check if names are the same (save some work if we are very lucky!)
     if n1 == n2:
         return 1
@@ -54,13 +54,22 @@ def plant_name_check(plant_name_1, plant_name_2, max_lev_dist=3):
         for w in l1:
             if not w in(l2):
                  _1_is_in_2 = 0
+         # ...and visa versa       
         _2_is_in_1 = 1
-        # ...and visa versa
         for w in l2:
             if not w in(l1):
                  _2_is_in_1 = 0
         if _1_is_in_2 or _2_is_in_1:
             return 2
+        # Repeat first comparison, but strip any trailing s to account for possible plurals (e.g. camellias not camellia)
+        _1_is_in_2_s = 1
+        l2_s = []
+        [ l2_s.append(w.rstrip('s')) for w in l2 ]
+        for w in l1:
+            if not w.rstrip('s') in(l2_s):
+                 _1_is_in_2_s = 0
+        if _1_is_in_2_s:
+            return 2.5
         # Get Levenshtein distance
         if jf.levenshtein_distance(n1,n2) <= max_lev_dist:
             return 3
@@ -77,44 +86,47 @@ def get_rhs_google_map(driver, rhs_id, botanical_name, common_name):
     print(driver.current_url)
     time.sleep(2)
     
-    
     # Handle cookie consent
     if driver.current_url.find('consent') > 0:
         print('Cookie consent')
-        agree_button = WebDriverWait(driver,20).until(EC.element_to_be_clickable((By.XPATH,'//button[@class="VfPpkd-LgbsSe VfPpkd-LgbsSe-OWXEXe-k8QpJ VfPpkd-LgbsSe-OWXEXe-dgl2Hf nCP5yc AjY5Oe DuMIQc"]/div[@class="VfPpkd-RLmnJb]')))
+        agree_button = WebDriverWait(driver,10).until(EC.element_to_be_clickable((By.XPATH,'//div[@class="VfPpkd-RLmnJb"]')))
         agree_button.click()
         time.sleep(2)
         print(driver.current_url)
     
-    
     # Find list of matching search results
     soup = BeautifulSoup(driver.page_source, "html.parser")
-    results_html = soup.find("div", {"class": "sh-pr__product-results"})
+    
+    # Are the results in 'grid' format...
+    results_html = soup.find("div", {"class": "sh-pr__product-results-grid"})
     if results_html is not None:
-        results_list = results_html.find_all("div", {"class": "sh-dlr__list-result"})
-        if results_list is not None:
+        results_list = results_html.find_all("div", {"class": "sh-dgr__gr-auto sh-dgr__grid-result"})
+        match_list = []
+        [match_list.append(i) for i in results_list if ( ( plant_name_check(botanical_name,i.find("h4", {"class":"A2sOrd"}).text) < 4 ) or ( plant_name_check(common_name,i.find("h4", {"class":"A2sOrd"}).text) < 4) )]
+    else: 
+        # Are the results in list format...
+        results_html = soup.find("div", {"class": "sh-pr__product-results"})
+        if results_html is not None:
+            results_list = results_html.find_all("div", {"class": "sh-dlr__list-result"})
             match_list = []
             [match_list.append(i) for i in results_list if ( ( plant_name_check(botanical_name,i.find("h3", {"class":"xsRiS"}).text) < 4 ) or ( plant_name_check(common_name,i.find("h3", {"class":"xsRiS"}).text) < 4) )]
-            #print(len(match_list))
+        else:
+            print("Did not recognise the format of the shopping search results on page " + driver.current_url)
+            match_list = []
 
-            # Extract data and return as list of dict
-            rhs_google_map_list = []
-            rhs_google_map = {}
-            for p in match_list:
-                rhs_google_map = {}        
-                rhs_google_map["rhs_id"] = rhs_id
-                rhs_google_map["google_id_type"] = "data-docid"
-                rhs_google_map["google_id"] = p.get('data-docid')
-                #print('made it to here')        
-                rhs_google_map["google_product_url"] = 'https://www.google.co.uk/shopping/product/1?prds=pid:' + rhs_google_map["google_id"]
-                rhs_google_map["query_date"] = date.today().strftime("%d-%b-%Y")
+    # Extract data and return as list of dict
+    rhs_google_map_list = []
+    rhs_google_map = {}
+    for p in match_list:
+        rhs_google_map = {}        
+        rhs_google_map["rhs_id"] = rhs_id
+        rhs_google_map["google_id_type"] = "data-docid"
+        rhs_google_map["google_id"] = p.get('data-docid')     
+        rhs_google_map["google_product_url"] = 'https://www.google.co.uk/shopping/product/1?prds=pid:' + rhs_google_map["google_id"]
+        rhs_google_map["query_date"] = date.today().strftime("%d-%b-%Y")
+        rhs_google_map_list.append(rhs_google_map)
 
-                rhs_google_map_list.append(rhs_google_map)
-                #print(rhs_google_map_list)
-        
-            return rhs_google_map_list
-    else:
-        return None
+    return rhs_google_map_list
 
 
 def get_buying_options(driver, url, pid):
